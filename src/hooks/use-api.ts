@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
 import { emailError, normalizeEmail } from "@/lib/auth-validation";
+import { FRIENDS_REFRESH_INTERVAL_MS, INVITES_REFRESH_INTERVAL_MS } from "@/lib/live-updates";
 import type { Friend, Invites, SearchUser } from "@/types/api";
 
 export const queryKeys = {
@@ -14,7 +15,9 @@ export function useFriends() {
   return useQuery({
     queryKey: queryKeys.friends,
     queryFn: () => api.request<Friend[]>("/friends"),
-    refetchInterval: 15_000,
+    refetchInterval: FRIENDS_REFRESH_INTERVAL_MS,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
   });
 }
 
@@ -23,6 +26,9 @@ export function useInvites(userId?: number) {
     queryKey: queryKeys.invites(userId ?? 0),
     queryFn: () => api.request<Invites>(`/invites/${userId}`),
     enabled: Boolean(userId),
+    refetchInterval: INVITES_REFRESH_INTERVAL_MS,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
   });
 }
 

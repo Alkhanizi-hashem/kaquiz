@@ -1,47 +1,87 @@
-import { ScrollView, Text, View } from "react-native";
+import type { LayerGroup, Map as LeafletMap } from "leaflet";
+import { useEffect, useRef, useState } from "react";
+import { View } from "react-native";
+import "leaflet/dist/leaflet.css";
 
-import { AtlasCard } from "@/components/atlas-card";
-import { Avatar } from "@/components/avatar";
-import { relativeTime } from "@/lib/format";
-import { colors } from "@/theme";
-import type { Friend } from "@/types/api";
+import { MapControls } from "@/components/map-controls";
+import { friendMapPins, selectedFriendPin } from "@/lib/friend-map";
 import { displayName } from "@/lib/user-display";
+import type { Friend } from "@/types/api";
 
-export function FriendsMap({ friends }: { friends: Friend[] }) {
-  const located = friends.filter((friend) => friend.location);
+type Leaflet = typeof import("leaflet");
+
+export function FriendsMap({ friends, selectedFriendId }: { friends: Friend[]; selectedFriendId?: string }) {
+  const containerRef = useRef<View>(null);
+  const mapRef = useRef<LeafletMap | null>(null);
+  const markersRef = useRef<LayerGroup | null>(null);
+  const initialFriendsRef = useRef(friends);
+  const initialSelectedFriendIdRef = useRef(selectedFriendId);
+  const [leaflet, setLeaflet] = useState<Leaflet | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void import("leaflet").then((module) => {
+      if (active) setLeaflet(module);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!leaflet || !containerRef.current || mapRef.current) return;
+    const pins = friendMapPins(initialFriendsRef.current);
+    const selected = selectedFriendPin(initialFriendsRef.current, initialSelectedFriendIdRef.current);
+    const center = selected ?? pins[0] ?? { latitude: 40.7128, longitude: -74.006 };
+    const container = containerRef.current as unknown as HTMLElement;
+    const map = leaflet.map(container, { zoomControl: false })
+      .setView([center.latitude, center.longitude], pins.length ? 13 : 3);
+    leaflet.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+      maxZoom: 19,
+    }).addTo(map);
+    mapRef.current = map;
+    markersRef.current = leaflet.layerGroup().addTo(map);
+    const resizeObserver = new ResizeObserver(() => map.invalidateSize({ pan: false }));
+    resizeObserver.observe(container);
+    return () => {
+      resizeObserver.disconnect();
+      map.remove();
+      mapRef.current = null;
+      markersRef.current = null;
+    };
+  }, [leaflet]);
+
+  useEffect(() => {
+    if (!leaflet || !markersRef.current) return;
+    markersRef.current.clearLayers();
+    for (const pin of friendMapPins(friends)) {
+      const label = document.createElement("span");
+      label.textContent = `${displayName(pin.friend)} · latest shared location`;
+      leaflet.circleMarker([pin.latitude, pin.longitude], {
+        radius: 9,
+        color: "#08794A",
+        fillColor: "#20C77A",
+        fillOpacity: 1,
+        weight: 3,
+      }).bindPopup(label).addTo(markersRef.current);
+    }
+  }, [friends, leaflet]);
+
+  useEffect(() => {
+    const selected = selectedFriendPin(friends, selectedFriendId);
+    if (selected && mapRef.current) {
+      mapRef.current.setView([selected.latitude, selected.longitude], 16, { animate: true });
+    }
+  }, [friends, selectedFriendId]);
+
   return (
-    <ScrollView
-      accessibilityLabel="Web location overview"
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ padding: 16, paddingTop: 120, gap: 12 }}
-      style={{ flex: 1, backgroundColor: colors.paper }}
-    >
-      <View style={{ gap: 4 }}>
-        <Text style={{ color: colors.ink, fontSize: 24, fontWeight: "800" }}>Coordinate atlas</Text>
-        <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22 }}>
-          The interactive map is available in the iOS and Android app. Latest coordinates remain useful here.
-        </Text>
-      </View>
-      {located.map((friend) => {
-        const name = displayName(friend);
-        return (
-          <AtlasCard key={friend.id} style={{ flexDirection: "row", alignItems: "center" }}>
-            <Avatar name={friend.name} email={friend.email} uri={friend.avatar} />
-            <View style={{ flex: 1, gap: 3 }}>
-              <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "700" }}>{name}</Text>
-              <Text selectable style={{ color: colors.muted, fontVariant: ["tabular-nums"] }}>
-                {Number(friend.location?.latitude).toFixed(4)}, {Number(friend.location?.longitude).toFixed(4)}
-              </Text>
-              <Text style={{ color: colors.greenDark }}>{relativeTime(friend.location?.timestamp)}</Text>
-            </View>
-          </AtlasCard>
-        );
-      })}
-      {!located.length ? (
-        <Text style={{ color: colors.muted, textAlign: "center", padding: 24 }}>
-          No friend has shared a location yet.
-        </Text>
-      ) : null}
-    </ScrollView>
+    <View accessibilityLabel="Interactive map showing friends' latest shared locations" style={{ flex: 1 }}>
+      <View ref={containerRef} style={{ flex: 1 }} />
+      <MapControls
+        onZoomIn={() => mapRef.current?.zoomIn()}
+        onZoomOut={() => mapRef.current?.zoomOut()}
+      />
+    </View>
   );
 }

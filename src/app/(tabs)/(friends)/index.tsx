@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { Stack } from "expo-router/stack";
-import { Alert, ScrollView, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 
 import { AtlasButton } from "@/components/atlas-button";
 import { AtlasCard } from "@/components/atlas-card";
@@ -8,6 +8,7 @@ import { Avatar } from "@/components/avatar";
 import { ScreenState } from "@/components/screen-state";
 import { useFriends, useInviteActions } from "@/hooks/use-api";
 import { errorText, relativeTime } from "@/lib/format";
+import { isFriendOnline } from "@/lib/friend-map";
 import { colors } from "@/theme";
 import { useContentStyle } from "@/hooks/use-content-style";
 import { displayName } from "@/lib/user-display";
@@ -59,18 +60,47 @@ export default function FriendsScreen() {
       ) : null}
       {friends.data?.map((friend) => {
         const name = displayName(friend);
+        const online = friend.location ? isFriendOnline(friend.location.timestamp) : false;
+        const viewOnMap = () => router.navigate({
+          pathname: "/(tabs)/(map)",
+          params: { friendId: String(friend.id) },
+        });
         return (
           <AtlasCard key={friend.id}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <Pressable
+              accessibilityLabel={friend.location ? `View ${name} on map` : undefined}
+              accessibilityRole={friend.location ? "button" : undefined}
+              disabled={!friend.location}
+              onPress={viewOnMap}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 12,
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
               <Avatar name={friend.name} email={friend.email} uri={friend.avatar} />
               <View style={{ flex: 1, gap: 3 }}>
                 <Text style={{ color: colors.ink, fontSize: 18, fontWeight: "800" }}>{name}</Text>
                 {friend.email ? <Text selectable style={{ color: colors.muted }}>{friend.email}</Text> : null}
-                <Text style={{ color: friend.location ? colors.greenDark : colors.muted, fontWeight: "600" }}>
-                  {friend.location ? `Updated ${relativeTime(friend.location.timestamp)}` : "No location shared yet"}
+                <Text style={{ color: online ? colors.greenDark : colors.muted, fontWeight: "700" }}>
+                  {online
+                    ? "Online · location live"
+                    : friend.location
+                      ? `Last seen ${relativeTime(friend.location.timestamp)}`
+                      : "No location shared yet"}
                 </Text>
               </View>
-            </View>
+            </Pressable>
+            {friend.location ? (
+              <AtlasButton
+                variant="secondary"
+                onPress={viewOnMap}
+                accessibilityLabel={`View ${name} on map`}
+              >
+                {online ? "View live location" : "View last location"}
+              </AtlasButton>
+            ) : null}
             <AtlasButton
               variant="danger"
               loading={remove.isPending && remove.variables === friend.id}

@@ -1,3 +1,4 @@
+import { useLocalSearchParams } from "expo-router";
 import { useMemo } from "react";
 import { Linking, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,6 +22,7 @@ const statusCopy = {
 } as const;
 
 export default function MapScreen() {
+  const { friendId } = useLocalSearchParams<{ friendId?: string }>();
   const friends = useFriends();
   const sharing = useLocationSharing();
   const insets = useSafeAreaInsets();
@@ -44,7 +46,7 @@ export default function MapScreen() {
           onAction={() => friends.refetch()}
         />
       ) : (
-        <FriendsMap friends={friends.data ?? []} />
+        <FriendsMap friends={friends.data ?? []} selectedFriendId={friendId} />
       )}
       <View
         accessibilityRole="summary"

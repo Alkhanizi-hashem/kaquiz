@@ -2,13 +2,21 @@ import { Redirect } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 
 import { ScreenState } from "@/components/screen-state";
+import { useInvites } from "@/hooks/use-api";
 import { useAuth } from "@/providers/auth-provider";
 import { colors } from "@/theme";
 
 export default function TabsLayout() {
-  const { status } = useAuth();
+  const { status, user } = useAuth();
   if (status === "loading") return <ScreenState loading title="Loading atlas" />;
-  if (status !== "authenticated") return <Redirect href="/auth/login" />;
+  if (status !== "authenticated" || !user) return <Redirect href="/auth/login" />;
+
+  return <AuthenticatedTabs key={user.id} userId={user.id} />;
+}
+
+function AuthenticatedTabs({ userId }: { userId: number }) {
+  const invites = useInvites(userId);
+  const incomingCount = invites.data?.incoming.length ?? 0;
 
   return (
     <NativeTabs tintColor={colors.greenDark} backgroundColor={colors.paper} minimizeBehavior="onScrollDown">
@@ -23,6 +31,7 @@ export default function TabsLayout() {
       <NativeTabs.Trigger name="(requests)">
         <NativeTabs.Trigger.Icon sf={{ default: "bell", selected: "bell.fill" }} md="notifications" />
         <NativeTabs.Trigger.Label>Requests</NativeTabs.Trigger.Label>
+        {incomingCount ? <NativeTabs.Trigger.Badge>{String(incomingCount)}</NativeTabs.Trigger.Badge> : null}
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="(profile)">
         <NativeTabs.Trigger.Icon sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }} md="account_circle" />
