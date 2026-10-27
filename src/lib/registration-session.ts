@@ -37,3 +37,16 @@ export async function registerAndStartSession(
   const session = parseAppSession(await actions.register(values));
   await actions.startSession(session);
 }
+
+/** Google credentials are exchanged for a Kaquiz session, never stored as app tokens. */
+export async function googleAndStartSession(
+  actions: {
+    exchange: (body: { id_token: string }) => Promise<unknown>;
+    startSession: (session: AppSession) => Promise<void>;
+  },
+  idToken: string,
+) {
+  if (!idToken.trim()) throw new Error("Google did not return an ID token.");
+  const session = parseAppSession(await actions.exchange({ id_token: idToken }));
+  await actions.startSession(session);
+}

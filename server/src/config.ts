@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 const configSchema = z.object({
+  GOOGLE_WEB_CLIENT_ID: z.string().trim().min(1).optional(),
   JWT_SECRET: z.string().min(32),
   PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
   DATABASE_PATH: z.string().min(1).default('./kaquiz.sqlite'),

@@ -57,6 +57,21 @@ export function createDatabase(path: string) {
     CREATE INDEX IF NOT EXISTS sessions_user_idx ON sessions(user_id, expires_at);
   `);
 
+  // Additive migration: preserve existing password hashes and all foreign keys.
+  // OAuth-only users have an empty non-credential hash; password_enabled is the
+  // explicit gate. This avoids rebuilding the legacy NOT NULL users table.
+  const columns = database.prepare('PRAGMA table_info(users)').all();
+  if (!columns.some((column) => column.name === 'password_enabled')) {
+    database.exec('ALTER TABLE users ADD COLUMN password_enabled INTEGER NOT NULL DEFAULT 1 CHECK(password_enabled IN (0, 1))');
+  }
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS google_identities (
+      subject TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    ) STRICT;
+  `);
+
   return database;
 }
 

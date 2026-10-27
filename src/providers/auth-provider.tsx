@@ -4,7 +4,7 @@ import { createContext, type PropsWithChildren, use, useEffect, useState } from 
 import { api } from "@/lib/api";
 import { restoreFailureAction } from "@/lib/auth-restore";
 import { errorText } from "@/lib/format";
-import { parseAppSession, registerAndStartSession, type AppSession } from "@/lib/registration-session";
+import { googleAndStartSession, parseAppSession, registerAndStartSession, type AppSession } from "@/lib/registration-session";
 import { tokenStorage } from "@/lib/token-storage";
 import type { User } from "@/types/api";
 
@@ -14,6 +14,7 @@ type AuthContextValue = {
   status: AuthStatus;
   user: User | null;
   startupError: string | null;
+  loginWithGoogle: (idToken: string) => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
   registerWithEmail: (values: { email: string; password: string; name: string }) => Promise<void>;
   logout: () => Promise<void>;
@@ -97,6 +98,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
     await finishSession(parseAppSession(response));
   };
 
+  const loginWithGoogle = async (idToken: string) => {
+    await googleAndStartSession({
+      exchange: (body) => api.request("/auth/google", {
+        method: "POST",
+        body,
+        authenticated: false,
+      }),
+      startSession: finishSession,
+    }, idToken);
+  };
+
   const registerWithEmail = async (values: { email: string; password: string; name: string }) => {
     await registerAndStartSession({
       register: (body) => api.request("/auth/register", {
@@ -135,6 +147,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         user,
         startupError,
         loginWithEmail,
+        loginWithGoogle,
         registerWithEmail,
         logout,
         retryRestore: () => setRestoreAttempt((value) => value + 1),

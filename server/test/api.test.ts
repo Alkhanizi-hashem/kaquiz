@@ -133,7 +133,7 @@ describe('local email and password authentication', () => {
     try {
       const columns = database.prepare('PRAGMA table_info(users)').all() as unknown as Array<{ name: string }>;
       assert.deepEqual(columns.map(({ name }) => name), [
-        'id', 'email', 'password_hash', 'name', 'avatar', 'created_at', 'updated_at',
+        'id', 'email', 'password_hash', 'name', 'avatar', 'created_at', 'updated_at', 'password_enabled',
       ]);
     } finally {
       database.close();

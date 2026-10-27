@@ -8,12 +8,15 @@ import { z } from 'zod';
 import { createTokenService } from './auth.js';
 import { createDatabase, transaction } from './database.js';
 import { ApiError, errorHandler, notFoundHandler } from './errors.js';
+import { createGoogleVerifier, type GoogleVerifier } from './google-auth.js';
 import { hashPassword, performDummyPasswordWork, verifyPassword } from './password.js';
 
 interface AppOptions {
   databasePath: string;
   jwtSecret: string;
   corsOrigin?: string;
+  googleClientId?: string;
+  googleVerifier?: GoogleVerifier;
   now?: () => Date;
   authRateLimit?: { windowMs: number; limit: number };
 }
@@ -24,6 +27,7 @@ interface UserRow {
   name: string | null;
   avatar: string | null;
   password_hash?: string | null;
+  password_enabled?: number;
 }
 
 interface InviteRow {
@@ -93,6 +97,7 @@ export function createApp(options: AppOptions) {
   if (options.jwtSecret.length < 32) throw new Error('JWT secret must contain at least 32 characters');
   const database = createDatabase(options.databasePath);
   const tokenService = createTokenService(options.jwtSecret, database);
+  const verifyGoogle = options.googleVerifier ?? (options.googleClientId ? createGoogleVerifier(options.googleClientId) : null);
   const now = options.now ?? (() => new Date());
   const app = express();
   app.disable('x-powered-by');
@@ -133,12 +138,35 @@ export function createApp(options: AppOptions) {
 
   app.post('/api/auth/login', authLimiter, async (request, response) => {
     const input = loginSchema.parse(request.body);
-    const user = database.prepare('SELECT id, email, name, avatar, password_hash FROM users WHERE email = ?')
+    const user = database.prepare('SELECT id, email, name, avatar, password_hash, password_enabled FROM users WHERE email = ?')
       .get(input.email) as UserRow | undefined;
-    const valid = user?.password_hash
+    const valid = user?.password_enabled === 1 && user.password_hash
       ? await verifyPassword(input.password, user.password_hash)
       : (await performDummyPasswordWork(input.password), false);
     if (!user || !valid) throw new ApiError(401, 'INVALID_CREDENTIALS', 'Email or password is invalid');
+    response.json({ access_token: await tokenService.issue(user.id), user: serializeUser(user) });
+  });
+
+  app.post('/api/auth/google', authLimiter, async (request, response) => {
+    if (!verifyGoogle) throw new ApiError(503, 'GOOGLE_NOT_CONFIGURED', 'Google sign-in is not configured on this server');
+    const { id_token } = z.strictObject({ id_token: z.string().min(1).max(16_384) }).parse(request.body);
+    const identity = await verifyGoogle(id_token);
+    const userId = transaction(database, () => {
+      const existing = database.prepare('SELECT user_id FROM google_identities WHERE subject = ?')
+        .get(identity.subject) as { user_id: number } | undefined;
+      if (existing) return existing.user_id;
+      // Password sign-up never verified email ownership. Matching email alone
+      // MUST NOT grant access to that account or silently attach this identity.
+      if (database.prepare('SELECT 1 FROM users WHERE email = ?').get(identity.email)) {
+        throw new ApiError(409, 'GOOGLE_ACCOUNT_CONFLICT', 'An account already uses this email. Sign in with its existing method. Google account linking is not available.');
+      }
+      const result = database.prepare("INSERT INTO users (email, password_hash, password_enabled, name) VALUES (?, '', 0, ?)")
+        .run(identity.email, identity.name);
+      const id = Number(result.lastInsertRowid);
+      database.prepare('INSERT INTO google_identities (subject, user_id) VALUES (?, ?)').run(identity.subject, id);
+      return id;
+    });
+    const user = requireUser(database, userId);
     response.json({ access_token: await tokenService.issue(user.id), user: serializeUser(user) });
   });
 

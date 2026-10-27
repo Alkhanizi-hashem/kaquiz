@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { Text, TextInput, View } from "react-native";
 
 import { AtlasButton } from "@/components/atlas-button";
+import { GoogleSignIn } from "@/components/google-sign-in";
 import { AuthField } from "@/components/auth-field";
 import { AuthLink } from "@/components/auth-link";
 import { AuthScreen } from "@/components/auth-screen";
@@ -13,7 +14,8 @@ import { colors } from "@/theme";
 
 export function LoginContent() {
   const params = useLocalSearchParams<{ email?: string }>();
-  const { loginWithEmail } = useAuth();
+  const { loginWithEmail, loginWithGoogle } = useAuth();
+  const signingIn = useRef(false);
   const passwordRef = useRef<TextInput>(null);
   const [email, setEmail] = useState(typeof params.email === "string" ? params.email : "");
   const [password, setPassword] = useState("");
@@ -22,26 +24,38 @@ export function LoginContent() {
   const [loading, setLoading] = useState(false);
 
   const signIn = async () => {
+    if (signingIn.current) return;
     const result = validateLogin({ email, password });
     setErrors(result.errors);
     setFormError(null);
     if (Object.keys(result.errors).length) return;
 
+    signingIn.current = true;
     setLoading(true);
     try {
       await loginWithEmail(result.values.email, result.values.password);
     } catch (signInError) {
       setFormError(errorText(signInError));
     } finally {
+      signingIn.current = false;
       setLoading(false);
     }
+  };
+
+  const signInWithGoogle = async (idToken: string) => {
+    if (signingIn.current) return;
+    signingIn.current = true;
+    setLoading(true);
+    setFormError(null);
+    try { await loginWithGoogle(idToken); }
+    finally { signingIn.current = false; setLoading(false); }
   };
 
   return (
     <AuthScreen
       eyebrow="LIVE ATLAS"
       title="Welcome back."
-      detail="Sign in with your email to see the people who chose to share their location with you."
+      detail="Sign in to see the people who chose to share their location with you."
       footer={<Text style={{ color: colors.muted, fontSize: 13, lineHeight: 19, textAlign: "center" }}>Your password is sent securely to Kaquiz and is never stored on this device.</Text>}
     >
       <View
@@ -110,6 +124,7 @@ export function LoginContent() {
       />
       {formError ? <Text accessibilityRole="alert" selectable style={{ color: colors.coralDark }}>{formError}</Text> : null}
       <AtlasButton onPress={signIn} loading={loading}>Sign in</AtlasButton>
+      <GoogleSignIn disabled={loading} onCredential={signInWithGoogle} />
       <AuthLink href={{ pathname: "/auth/create-account", params: { email } }}>New to Kaquiz? Create an account</AuthLink>
     </AuthScreen>
   );

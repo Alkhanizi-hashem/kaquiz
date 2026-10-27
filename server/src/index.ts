@@ -8,6 +8,7 @@ const { app, close } = createApp({
   databasePath: config.DATABASE_PATH,
   jwtSecret: config.JWT_SECRET,
   corsOrigin: config.CORS_ORIGIN,
+  ...(config.GOOGLE_WEB_CLIENT_ID ? { googleClientId: config.GOOGLE_WEB_CLIENT_ID } : {}),
 });
 
 const server = app.listen(config.PORT, () => {
