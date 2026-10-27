@@ -7,6 +7,7 @@ import { Avatar } from "@/components/avatar";
 import { ScreenState } from "@/components/screen-state";
 import { useContentStyle } from "@/hooks/use-content-style";
 import { useInviteActions, useSearchUsers } from "@/hooks/use-api";
+import { ApiError } from "@/lib/api-client";
 import { emailError } from "@/lib/auth-validation";
 import { errorText } from "@/lib/format";
 import { displayName } from "@/lib/user-display";
@@ -19,6 +20,8 @@ export default function SearchScreen() {
   const results = useSearchUsers(email);
   const { send, accept } = useInviteActions(user?.id);
   const contentStyle = useContentStyle();
+  const eligibleResults = results.data?.filter((result) => result.id !== user?.id);
+  const ownAccountOnly = Boolean(results.data?.length && !eligibleResults?.length);
   const validEmail = Boolean(email.trim()) && !emailError(email);
 
   if (status !== "authenticated") {
@@ -29,13 +32,19 @@ export default function SearchScreen() {
     <ScrollView
       automaticallyAdjustKeyboardInsets
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ ...contentStyle, paddingVertical: 16, gap: 16 }}
+      contentContainerStyle={{ ...contentStyle, paddingTop: 12, paddingBottom: 32, gap: 20 }}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
       style={{ backgroundColor: colors.paper }}
     >
+      <View style={{ gap: 8 }}>
+        <Text style={{ color: colors.greenDark, fontSize: 12, fontWeight: "800", letterSpacing: 1.8 }}>GROW YOUR CIRCLE</Text>
+        <Text style={{ color: colors.inkSoft, fontSize: 16, lineHeight: 24 }}>Find a familiar face.</Text>
+      </View>
       <View style={{ gap: 6 }}>
         <Text nativeID="email-label" style={{ color: colors.ink, fontWeight: "800" }}>Email address</Text>
         <TextInput
+          accessibilityLabel="Friend’s email address"
           accessibilityLabelledBy="email-label"
           autoCapitalize="none"
           autoComplete="email"
@@ -44,10 +53,11 @@ export default function SearchScreen() {
           onChangeText={(value) => {
             setEmail(value);
             send.reset();
+            accept.reset();
           }}
           placeholder="friend@example.com"
           placeholderTextColor={colors.muted}
-          returnKeyType="search"
+          returnKeyType="done"
           style={{
             minHeight: 52,
             borderWidth: 2,
@@ -69,14 +79,16 @@ export default function SearchScreen() {
         <Text accessibilityRole="alert" style={{ color: colors.coralDark }}>Enter a valid email address.</Text>
       ) : results.isLoading ? (
         <ScreenState loading title="Searching" />
+      ) : results.error instanceof ApiError && results.error.status === 404 && results.error.code === "USER_NOT_FOUND" ? (
+        <ScreenState title="No account found" detail="Check the email and try again." />
       ) : results.isError ? (
-        <ScreenState title="Search did not complete" detail={errorText(results.error)} />
+        <ScreenState title="Search did not complete" detail={errorText(results.error)} actionLabel="Try again" onAction={() => { void results.refetch(); }} />
+      ) : ownAccountOnly ? (
+        <ScreenState title="That’s your account" detail="Try a friend’s email address to invite them to your circle." />
       ) : !results.data?.length ? (
         <ScreenState title="No account found" detail="Check the email and try again." />
       ) : (
-        results.data
-          .filter((result) => result.id !== user?.id)
-          .map((result) => {
+        eligibleResults?.map((result) => {
             const name = displayName(result);
             const isSending = send.isPending && send.variables === result.id;
             const isAccepting = accept.isPending && accept.variables === result.id;
@@ -103,8 +115,9 @@ export default function SearchScreen() {
                   onPress={() => result.relationship === "incoming_pending"
                     ? accept.mutate(result.id)
                     : send.mutate(result.id)}
+                  accessibilityLabel={`${label}: ${name}`}
                   loading={isSending || isAccepting}
-                  disabled={disabled || (send.isSuccess && send.variables === result.id)}
+                  disabled={send.isPending || accept.isPending || disabled || (send.isSuccess && send.variables === result.id)}
                 >
                   {label}
                 </AtlasButton>

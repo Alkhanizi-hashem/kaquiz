@@ -65,8 +65,9 @@ export function GoogleSignIn({ disabled, onCredential }: GoogleSignInProps) {
   }, [clientId]);
 
   if (!clientId) return null;
-  return <View style={{ gap: 8 }}>
-    <div ref={container} inert={Boolean(disabled || loading)} style={{ opacity: disabled || loading ? 0.5 : 1, minHeight: 44 }} />
+  return <View style={{ gap: 14 }}>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}><View style={{ flex: 1, height: 1, backgroundColor: colors.line }} /><Text style={{ color: colors.muted, fontSize: 12 }}>or continue with</Text><View style={{ flex: 1, height: 1, backgroundColor: colors.line }} /></View>
+    <div ref={container} inert={Boolean(disabled || loading)} style={{ opacity: disabled || loading ? 0.5 : 1, minHeight: 44, display: "flex", justifyContent: "center" }} />
     {loading ? <ActivityIndicator accessibilityLabel="Signing in with Google" /> : null}
     {error ? <Text accessibilityRole="alert" style={{ color: colors.coralDark }}>{error}</Text> : null}
   </View>;

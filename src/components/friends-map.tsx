@@ -4,6 +4,8 @@ import MapView, { Marker, type Region } from "react-native-maps";
 import { MapControls } from "@/components/map-controls";
 import { friendMapPins, selectedFriendPin } from "@/lib/friend-map";
 import type { Friend } from "@/types/api";
+import { relativeTime } from "@/lib/format";
+import { colors } from "@/theme";
 import { displayName } from "@/lib/user-display";
 
 export function FriendsMap({ friends, selectedFriendId }: { friends: Friend[]; selectedFriendId?: string }) {
@@ -60,8 +62,8 @@ export function FriendsMap({ friends, selectedFriendId }: { friends: Friend[]; s
             key={friend.id}
             coordinate={{ latitude, longitude }}
             title={displayName(friend)}
-            description="Latest shared location"
-            pinColor="#20C77A"
+            description={`Updated ${relativeTime(friend.location?.timestamp)}`}
+            pinColor={colors.greenDark}
           />
         ))}
       </MapView>

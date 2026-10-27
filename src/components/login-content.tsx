@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
-import { Text, TextInput, View } from "react-native";
+import { Text, TextInput } from "react-native";
 
 import { AtlasButton } from "@/components/atlas-button";
 import { GoogleSignIn } from "@/components/google-sign-in";
@@ -53,39 +53,11 @@ export function LoginContent() {
 
   return (
     <AuthScreen
-      eyebrow="LIVE ATLAS"
+      eyebrow="A LITTLE CLOSER"
       title="Welcome back."
-      detail="Sign in to see the people who chose to share their location with you."
-      footer={<Text style={{ color: colors.muted, fontSize: 13, lineHeight: 19, textAlign: "center" }}>Your password is sent securely to Kaquiz and is never stored on this device.</Text>}
+      detail="Pick up where you left off. See your friends’ shared locations, all in one place."
+      footer={<Text style={{ color: colors.muted, fontSize: 13, lineHeight: 19, textAlign: "center" }}>Share your latest location with accepted friends. Location updates pause when the app is in the background.</Text>}
     >
-      <View
-        accessibilityElementsHidden
-        style={{
-          width: 72,
-          height: 72,
-          borderRadius: 20,
-          borderCurve: "continuous",
-          backgroundColor: colors.ink,
-          padding: 12,
-          justifyContent: "space-between",
-        }}
-      >
-        {[0, 1, 2].map((row) => (
-          <View key={row} style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            {[0, 1, 2].map((column) => (
-              <View
-                key={column}
-                style={{
-                  width: row === 1 && column === 1 ? 15 : 7,
-                  height: 7,
-                  borderRadius: 4,
-                  backgroundColor: row === 1 && column === 1 ? colors.coral : colors.green,
-                }}
-              />
-            ))}
-          </View>
-        ))}
-      </View>
       <AuthField
         label="Email address"
         error={errors.email}

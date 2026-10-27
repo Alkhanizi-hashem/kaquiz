@@ -5,6 +5,8 @@ import "leaflet/dist/leaflet.css";
 
 import { MapControls } from "@/components/map-controls";
 import { friendMapPins, selectedFriendPin } from "@/lib/friend-map";
+import { relativeTime } from "@/lib/format";
+import { colors } from "@/theme";
 import { displayName } from "@/lib/user-display";
 import type { Friend } from "@/types/api";
 
@@ -57,11 +59,11 @@ export function FriendsMap({ friends, selectedFriendId }: { friends: Friend[]; s
     markersRef.current.clearLayers();
     for (const pin of friendMapPins(friends)) {
       const label = document.createElement("span");
-      label.textContent = `${displayName(pin.friend)} · latest shared location`;
+      label.textContent = `${displayName(pin.friend)} · updated ${relativeTime(pin.friend.location?.timestamp)}`;
       leaflet.circleMarker([pin.latitude, pin.longitude], {
         radius: 9,
-        color: "#08794A",
-        fillColor: "#20C77A",
+        color: colors.greenDark,
+        fillColor: colors.green,
         fillOpacity: 1,
         weight: 3,
       }).bindPopup(label).addTo(markersRef.current);

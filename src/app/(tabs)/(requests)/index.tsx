@@ -22,10 +22,15 @@ export default function RequestsScreen() {
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ ...contentStyle, paddingVertical: 16, gap: 20 }}
+      contentContainerStyle={{ ...contentStyle, paddingTop: 12, paddingBottom: 32, gap: 24 }}
       style={{ backgroundColor: colors.paper }}
     >
       <Stack.Screen options={{ title: "Requests" }} />
+      <View style={{ gap: 8 }}>
+        <Text style={{ color: colors.greenDark, fontSize: 12, fontWeight: "800", letterSpacing: 1.8 }}>STAY CONNECTED</Text>
+        <Text style={{ color: colors.inkSoft, fontSize: 16, lineHeight: 24 }}>Your circle, on your terms.</Text>
+        <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 20 }}>Accepting a request lets you see each other’s shared location.</Text>
+      </View>
       {invites.isLoading ? <ScreenState loading title="Loading requests" /> : null}
       {invites.isError ? (
         <ScreenState
@@ -57,22 +62,27 @@ export default function RequestsScreen() {
                     <Avatar name={invite.sender.name} email={invite.sender.email} uri={invite.sender.avatar} />
                     <View style={{ flex: 1, gap: 3 }}>
                       <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "800" }}>{name}</Text>
-                      <Text style={{ color: colors.muted }}>Sent {relativeTime(invite.created_at)}</Text>
+                      {invite.sender.email ? <Text selectable style={{ color: colors.muted, fontSize: 13 }}>{invite.sender.email}</Text> : null}
+                      <Text style={{ color: colors.muted, fontSize: 13 }}>Sent {relativeTime(invite.created_at)}</Text>
                     </View>
                   </View>
-                  <View style={{ flexDirection: "row", gap: 8 }}>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
                     <AtlasButton
-                      style={{ flex: 1 }}
+                      style={{ flex: 1, minWidth: 100 }}
+                      accessibilityLabel={`Accept request from ${name}`}
+                      disabled={accept.isPending || decline.isPending}
                       loading={accept.isPending && accept.variables === invite.sender.id}
-                      onPress={() => accept.mutate(invite.sender.id)}
+                      onPress={() => { if (!accept.isPending && !decline.isPending) accept.mutate(invite.sender.id); }}
                     >
                       Accept
                     </AtlasButton>
                     <AtlasButton
-                      style={{ flex: 1 }}
-                      variant="danger"
+                      style={{ flex: 1, minWidth: 100 }}
+                      variant="secondary"
+                      accessibilityLabel={`Decline request from ${name}`}
+                      disabled={accept.isPending || decline.isPending}
                       loading={decline.isPending && decline.variables === invite.sender.id}
-                      onPress={() => decline.mutate(invite.sender.id)}
+                      onPress={() => { if (!accept.isPending && !decline.isPending) decline.mutate(invite.sender.id); }}
                     >
                       Decline
                     </AtlasButton>

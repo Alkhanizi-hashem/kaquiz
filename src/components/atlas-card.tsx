@@ -7,14 +7,14 @@ export function AtlasCard({ children, style }: PropsWithChildren<{ style?: ViewS
   return (
     <View
       style={{
-        padding: 16,
+        padding: 20,
         gap: 12,
-        borderRadius: 18,
+        borderRadius: 24,
         borderCurve: "continuous",
         borderWidth: 1,
         borderColor: colors.line,
         backgroundColor: colors.surface,
-        boxShadow: "0 4px 18px rgba(16, 35, 30, 0.06)",
+        boxShadow: "0 3px 14px rgba(24, 59, 50, 0.035)",
         ...style,
       }}
     >

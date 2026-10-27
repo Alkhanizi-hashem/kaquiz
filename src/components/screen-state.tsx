@@ -19,10 +19,12 @@ export function ScreenState({
   return (
     <View
       accessibilityRole={loading ? "progressbar" : undefined}
-      style={{ padding: 24, gap: 12, alignItems: "center", justifyContent: "center", minHeight: 180 }}
+      accessibilityLabel={loading ? title : undefined}
+      accessibilityLiveRegion="polite"
+      style={{ padding: 24, gap: 12, alignItems: "center", justifyContent: "center", minHeight: 220, flex: 1 }}
     >
       {loading ? <ActivityIndicator size="large" color={colors.greenDark} /> : null}
-      <Text selectable style={{ color: colors.ink, fontSize: 20, fontWeight: "800", textAlign: "center" }}>
+      <Text selectable style={{ color: colors.ink, fontSize: 20, fontWeight: "700", textAlign: "center" }}>
         {title}
       </Text>
       {detail ? (

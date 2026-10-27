@@ -8,7 +8,7 @@ import { colors } from "@/theme";
 
 export default function TabsLayout() {
   const { status, user } = useAuth();
-  if (status === "loading") return <ScreenState loading title="Loading atlas" />;
+  if (status === "loading") return <ScreenState loading title="Loading Kaquiz" />;
   if (status !== "authenticated" || !user) return <Redirect href="/auth/login" />;
 
   return <AuthenticatedTabs key={user.id} userId={user.id} />;
@@ -19,7 +19,7 @@ function AuthenticatedTabs({ userId }: { userId: number }) {
   const incomingCount = invites.data?.incoming.length ?? 0;
 
   return (
-    <NativeTabs tintColor={colors.greenDark} backgroundColor={colors.paper} minimizeBehavior="onScrollDown">
+    <NativeTabs tintColor={colors.greenDark} backgroundColor={colors.paper}>
       <NativeTabs.Trigger name="(map)">
         <NativeTabs.Trigger.Icon sf={{ default: "map", selected: "map.fill" }} md="map" />
         <NativeTabs.Trigger.Label>Map</NativeTabs.Trigger.Label>

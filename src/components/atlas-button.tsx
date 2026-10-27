@@ -32,7 +32,7 @@ export function AtlasButton({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={accessibilityLabel ?? (typeof children === "string" ? children : undefined)}
       accessibilityState={{ disabled: Boolean(disabled || loading), busy: loading }}
       disabled={disabled || loading}
       onPress={async () => {
@@ -42,26 +42,26 @@ export function AtlasButton({
         await onPress?.();
       }}
       style={({ pressed }) => ({
-        minHeight: 48,
+        minHeight: 52,
+        paddingVertical: 13,
+        flexDirection: "row",
+        gap: 10,
         paddingHorizontal: 20,
         alignItems: "center",
         justifyContent: "center",
-        borderRadius: 14,
+        borderRadius: 16,
         borderCurve: "continuous",
         borderWidth: 1,
         borderColor: palette.border,
         backgroundColor: palette.background,
-        opacity: disabled || loading ? 0.5 : pressed ? 0.72 : 1,
+        opacity: disabled && !loading ? 0.5 : pressed ? 0.82 : 1,
         ...style,
       })}
     >
-      {loading ? (
-        <ActivityIndicator color={palette.foreground} />
-      ) : (
-        <Text style={{ color: palette.foreground, fontSize: 16, fontWeight: "700" }}>
-          {children}
-        </Text>
-      )}
+      {loading ? <ActivityIndicator color={palette.foreground} /> : null}
+      <Text style={{ color: palette.foreground, fontSize: 16, lineHeight: 22, fontWeight: "700", textAlign: "center", flexShrink: 1 }}>
+        {children}
+      </Text>
     </Pressable>
   );
 }

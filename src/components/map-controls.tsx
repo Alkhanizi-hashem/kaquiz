@@ -8,9 +8,9 @@ export function MapControls({ onZoomIn, onZoomOut }: { onZoomIn: () => void; onZ
       style={{
         position: "absolute",
         right: 16,
-        bottom: 116,
+        bottom: 28,
         overflow: "hidden",
-        borderRadius: 14,
+        borderRadius: 20,
         borderCurve: "continuous",
         borderWidth: 1,
         borderColor: colors.line,

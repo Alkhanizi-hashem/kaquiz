@@ -14,6 +14,7 @@ import { colors } from "@/theme";
 export default function CreateAccountScreen() {
   const params = useLocalSearchParams<{ email?: string }>();
   const { registerWithEmail } = useAuth();
+  const submitting = useRef(false);
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const [name, setName] = useState("");
@@ -24,26 +25,30 @@ export default function CreateAccountScreen() {
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
+    if (submitting.current) return;
     const result = validateRegistration({ name, email, password });
     setErrors(result.errors);
     setFormError(null);
     if (Object.keys(result.errors).length) return;
 
+    submitting.current = true;
     setLoading(true);
     try {
       await registerWithEmail(result.values);
     } catch (error) {
       setFormError(errorText(error));
     } finally {
+      submitting.current = false;
       setLoading(false);
     }
   };
 
   return (
     <AuthScreen
+      headerVisible
       eyebrow="YOUR CIRCLE"
-      title="Start your atlas."
-      detail="Create an account and choose exactly who can see you."
+      title={"Make room for\nyour people."}
+      detail="Create your account, invite a friend, and find each other on the map."
       footer={<AuthLink href="/auth/login">Already have an account? Sign in</AuthLink>}
     >
       <AuthField

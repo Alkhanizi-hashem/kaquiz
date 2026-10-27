@@ -51,7 +51,8 @@ export function GoogleSignIn({ disabled, onCredential }: GoogleSignInProps) {
     }
   };
 
-  return <View style={{ gap: 8 }}>
+  return <View style={{ gap: 14 }}>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}><View style={{ flex: 1, height: 1, backgroundColor: colors.line }} /><Text style={{ color: colors.muted, fontSize: 12 }}>or</Text><View style={{ flex: 1, height: 1, backgroundColor: colors.line }} /></View>
     <AtlasButton variant="secondary" disabled={disabled} loading={loading} onPress={signIn}>Continue with Google</AtlasButton>
     {error ? <Text accessibilityRole="alert" style={{ color: colors.coralDark }}>{error}</Text> : null}
   </View>;
