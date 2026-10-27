@@ -60,3 +60,20 @@ See [Google setup and iPhone demo checklist](../GOOGLE_AUTH.md). The server veri
 An email collision returns `409 GOOGLE_ACCOUNT_CONFLICT`: sign in with the existing account's method. There is deliberately no automatic email-based linking or linking endpoint. Password registration does not verify ownership, so automatic linking would be unsafe. OAuth-only users have `password_enabled = 0` and an empty non-credential hash; password login explicitly rejects them. The additive migration retains all existing hashes and relationships.
 
 ID tokens are bearer credentials and can be reused until Google expiry (native SDKs may cache them); this is not a one-time authorization-code/nonce exchange. Do not log tokens. Production API transport must be HTTPS. Google sign-in issues the same seven-day revocable Kaquiz sessions as password login; Google access/refresh tokens are never stored. Logging out revokes only the Kaquiz session, not the user's Google account consent.
+
+### Proxied hosting / key-service outages
+
+The API must fetch Google's public signing keys from
+`https://www.googleapis.com/oauth2/v3/certs` over verified HTTPS. On Node.js
+24.5+ in environments that require `HTTP_PROXY`/`HTTPS_PROXY`, start the API
+with `NODE_USE_ENV_PROXY=1 npm start` (or `node --use-env-proxy dist/index.js`).
+Set this before Node starts; dotenv alone is too late for the startup flag.
+Configure `NO_PROXY` appropriately for local services. See
+[Node's proxy option](https://nodejs.org/api/cli.html#--use-env-proxy).
+Never disable TLS verification or JWT signature/claim checks to fix networking.
+
+Signing-key fetch failures return `503 GOOGLE_UNAVAILABLE`, not an invalid-user
+credential error. Server logs contain only a fixed key-service-unavailable
+message, never the token or personally identifying claims. Invalid signatures,
+unknown signing keys, and invalid audience/issuer/time claims remain rejected
+with `401 INVALID_GOOGLE_TOKEN`.

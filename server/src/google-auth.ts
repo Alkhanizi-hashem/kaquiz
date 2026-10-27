@@ -15,9 +15,23 @@ const identitySchema = z.object({
 // Production always resolves Google's HTTPS JWKS, never a URL from the token.
 export function createGoogleVerifier(clientId: string, keys: JWTVerifyGetKey = googleKeys) {
   if (!clientId.trim()) throw new Error('A Google OAuth web client ID is required');
+  const resolveKey: JWTVerifyGetKey = async (header, token) => {
+    try {
+      return await keys(header, token);
+    } catch (error) {
+      const code = error instanceof Error && 'code' in error ? error.code : undefined;
+      // Only key-fetch infrastructure failures are service outages. A missing
+      // matching key or bad token remains an authentication failure below.
+      if (error instanceof TypeError || code === 'ERR_JWKS_TIMEOUT' || code === 'ERR_JOSE_GENERIC' || code === 'ERR_JWKS_INVALID') {
+        console.warn('Google sign-in key service unavailable'); // No token, claims or provider error details.
+        throw new ApiError(503, 'GOOGLE_UNAVAILABLE', 'Google sign-in is temporarily unavailable. Please try again later.');
+      }
+      throw error;
+    }
+  };
   return async (idToken: string) => {
     try {
-      const { payload } = await jwtVerify(idToken, keys, {
+      const { payload } = await jwtVerify(idToken, resolveKey, {
         algorithms: ['RS256'],
         issuer: ['https://accounts.google.com', 'accounts.google.com'],
         audience: clientId,
@@ -27,7 +41,8 @@ export function createGoogleVerifier(clientId: string, keys: JWTVerifyGetKey = g
       const identity = identitySchema.parse(payload);
       // A provider subject, not email, is the account's permanent identity.
       return { subject: identity.sub, email: identity.email.toLowerCase(), name: identity.name?.slice(0, 100) ?? null };
-    } catch {
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'GOOGLE_UNAVAILABLE') throw error;
       throw new ApiError(401, 'INVALID_GOOGLE_TOKEN', 'Google sign-in could not be verified. Please try again.');
     }
   };

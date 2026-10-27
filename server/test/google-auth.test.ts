@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { afterEach, before, describe, test } from 'node:test';
-import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, type JWTPayload } from 'jose';
+import { errors, createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, type JWTPayload } from 'jose';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { createDatabase } from '../src/database.js';
@@ -149,4 +149,30 @@ test('migration preserves legacy hashes and foreign keys and is repeatable', asy
   const result = await request(app).post('/api/auth/login').send({ email: 'legacy@example.com', password: 'legacy-password-123' }).expect(200);
   assert.equal(result.body.user.id, 42);
   await request(app).post('/api/auth/google').send({ id_token: await token() }).expect(200);
+});
+
+
+describe('Google signing-key infrastructure failures', () => {
+  test('returns retryable 503 for key network failure without exposing details', async () => {
+    const keyService = createGoogleVerifier(clientId, async () => {
+      throw new TypeError('fetch failed: sensitive-provider-detail');
+    });
+    const instance = createApp({ databasePath: ':memory:', jwtSecret: 'test-google-secret-at-least-thirty-two-characters', googleVerifier: keyService });
+    instances.push(instance);
+    const result = await request(instance.app).post('/api/auth/google').send({ id_token: await token() }).expect(503);
+    assert.equal(result.body.error.code, 'GOOGLE_UNAVAILABLE');
+    assert(!JSON.stringify(result.body).includes('sensitive-provider-detail'));
+  });
+
+  test('recognizes key timeout and malformed provider responses as unavailable', async () => {
+    for (const error of [new errors.JWKSTimeout(), new errors.JOSEError(), new errors.JWKSInvalid()]) {
+      const keyService = createGoogleVerifier(clientId, async () => { throw error; });
+      await assert.rejects(keyService(await token()), { status: 503, code: 'GOOGLE_UNAVAILABLE' });
+    }
+  });
+
+  test('unknown signing key remains 401 and never becomes an authenticated session', async () => {
+    const keyService = createGoogleVerifier(clientId, async () => { throw new errors.JWKSNoMatchingKey(); });
+    await assert.rejects(keyService(await token()), { status: 401, code: 'INVALID_GOOGLE_TOKEN' });
+  });
 });
